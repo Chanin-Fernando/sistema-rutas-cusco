@@ -1,36 +1,49 @@
+# Nodos: Zonas principales distribuidas en un lienzo de 100x100
+# Centro: Plaza de Armas en (50, 50)
+# +Y = Norte, -Y = Sur, +X = Este, -X = Oeste
 NODOS = {
-    "Plaza de Armas":    (50, 50),
-    "San Blas":          (55, 60),
-    "Mercado Central":   (44, 48),
-    "Wanchaq":           (60, 35),
-    "San Cristóbal":     (50, 65),
-    "Santa Clara":       (42, 44),
-    "Santiago":          (30, 42),
-    "Ttio":              (70, 55),
-    "Huanchac":          (65, 28),
-    "Belén":             (48, 53),
-    "Limaqpampa":        (56, 44),
-    "San Pedro":         (45, 42),
+    "Plaza de Armas":       (50, 50),
+    "San Cristóbal":        (50, 75), # Norte (Expandido hacia arriba)
+    "San Blas":             (65, 70), # Noreste
+    "Santa Ana":            (35, 65), # Noroeste
+    "Plaza San Francisco":  (40, 45), # Suroeste (Cerca de la Plaza)
+    "San Pedro / Mercado":  (30, 35), # Suroeste (Más alejado)
+    "Belén":                (25, 20), # Suroeste profundo
+    "Santiago":             (15, 15), # Extremo Suroeste
+    "Coricancha":           (60, 35), # Sureste (Bajando por Av. El Sol)
+    "Limaqpampa":           (70, 40), # Sureste (Hacia Av. de la Cultura)
+    "Estación Wanchaq":     (65, 20), # Sureste profundo (Final Av. El Sol)
+    "Wanchaq (Túpac Amaru)":(85, 30), # Este-Sureste (Distrito moderno)
+    "Ttio":                 (95, 10), # Extremo Sureste (Siguiendo el valle)
 }
 
+# Aristas: (nodo_a, nodo_b, tiempo_caminando_minutos)
+# Los tiempos de caminata se mantienen fieles a la realidad física y topográfica.
 ARISTAS_BASE = [
-    ("Plaza de Armas", "San Blas",         4),
-    ("Plaza de Armas", "Mercado Central",  5),
-    ("Plaza de Armas", "Belén",            3),
-    ("Plaza de Armas", "Limaqpampa",       4),
-    ("San Blas", "San Cristóbal",          5),
-    ("San Blas", "Ttio",                   8),
-    ("Mercado Central", "Santa Clara",     4),
-    ("Mercado Central", "San Pedro",       3),
-    ("Santa Clara", "Santiago",            7),
-    ("San Pedro", "Santiago",              6),
-    ("Wanchaq", "Limaqpampa",             6),
-    ("Wanchaq", "Huanchac",               7),
-    ("Wanchaq", "Ttio",                   5),
-    ("Huanchac", "Ttio",                  6),
-    ("Belén", "Limaqpampa",              2),
-    ("Limaqpampa", "San Pedro",          4),
-    ("San Cristóbal", "Belén",           6),
+    # Rutas desde la Plaza de Armas
+    ("Plaza de Armas", "Plaza San Francisco", 4),
+    ("Plaza de Armas", "Coricancha",          6),
+    ("Plaza de Armas", "San Blas",            8),  # Subida
+    ("Plaza de Armas", "San Cristóbal",      12),  # Subida muy empinada
+    ("Plaza de Armas", "Santa Ana",          14),  # Subida muy empinada
+    
+    # Eje Noroeste - Suroeste (Sector San Pedro / Santiago)
+    ("Plaza San Francisco", "San Pedro / Mercado", 3),
+    ("San Pedro / Mercado", "Belén",               6),
+    ("San Pedro / Mercado", "Santiago",            9),
+    ("Belén", "Santiago",                          5),
+    ("Santa Ana", "San Pedro / Mercado",          12),
+    
+    # Eje Centro - Sureste (Sector Inca/Colonial hacia lo moderno)
+    ("Coricancha", "Limaqpampa",              4),
+    ("Coricancha", "Estación Wanchaq",        6),
+    ("Limaqpampa", "Wanchaq (Túpac Amaru)",  10),
+    ("San Blas", "Limaqpampa",                8),
+    
+    # Eje Sureste (Distritos modernos)
+    ("Estación Wanchaq", "Wanchaq (Túpac Amaru)", 8),
+    ("Wanchaq (Túpac Amaru)", "Ttio",        15),
+    ("Estación Wanchaq", "Ttio",             12),
 ]
 
 def construir_grafo(calles_bloqueadas=None):
