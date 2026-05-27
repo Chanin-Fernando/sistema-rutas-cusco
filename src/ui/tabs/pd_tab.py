@@ -1,25 +1,25 @@
 import tkinter as tk
-from tkinter import ttk
 import time
 from ...algorithms import ProgramacionDinamica
+from ..base_tab import BaseTab
 
-class PDTab:
+class PDTab(BaseTab):
     def __init__(self, notebook, app):
         self.app = app
-        self.tab = tk.Frame(notebook, bg=app.COLORES["bg"])
-        notebook.add(self.tab, text="💼 PROG. DINÁMICA")
+        self.tab = self._make_frame(notebook)
         self._crear_widgets()
 
     def _crear_widgets(self):
-        self._seccion(self.tab, "Knapsack 0/1 – Carga óptima del repartidor  |  O(n × W)")
-        ctrl = tk.Frame(self.tab, bg=self.app.COLORES["bg"])
-        ctrl.pack(fill=tk.X, pady=4)
-        tk.Label(ctrl, text="Capacidad máx (kg):", bg=self.app.COLORES["bg"],
-                 fg=self.app.COLORES["text2"], font=("Courier New",9)).pack(side=tk.LEFT)
+        c = self.app.COLORES
+        self._seccion(self.tab, "💼 Programación Dinámica",
+                      "Knapsack 0/1 – carga óptima · O(n × W)")
+        ctrl = self._ctrl_row(self.tab)
+        self._label(ctrl, "Capacidad máx (kg):").pack(side=tk.LEFT)
         self.var_cap = tk.DoubleVar(value=15.0)
-        tk.Spinbox(ctrl, from_=5, to=50, increment=0.5, textvariable=self.var_cap, width=6,
-                   bg=self.app.COLORES["card"], fg=self.app.COLORES["text"],
-                   font=("Courier New",9), buttonbackground=self.app.COLORES["card"]).pack(side=tk.LEFT, padx=6)
+        tk.Spinbox(ctrl, from_=5, to=50, increment=0.5,
+                   textvariable=self.var_cap, width=6,
+                   bg=c["chip_bg"], fg=c["text"], font=("Segoe UI", 9),
+                   relief=tk.FLAT, buttonbackground=c["chip_bg"]).pack(side=tk.LEFT, padx=6)
         self._boton(ctrl, "▶ Optimizar carga", self._ejecutar_pd).pack(side=tk.LEFT)
         self.txt_pd = self._text_area(self.tab)
 
@@ -28,63 +28,17 @@ class PDTab:
         pd = ProgramacionDinamica(cap)
         t0 = time.perf_counter()
         seleccionados, valor, peso = pd.resolver(self.app.pedidos)
-        elapsed = (time.perf_counter()-t0)*1000
-        lines = [f"── Knapsack 0/1 – Programación Dinámica ──",
-                 f"Capacidad máxima: {cap} kg | {len(self.app.pedidos)} pedidos evaluados",
-                 f"Tiempo de ejecución: {elapsed:.3f} ms", ""]
-        lines.extend(pd.log_pasos)
+        elapsed = (time.perf_counter() - t0) * 1000
         n = len(self.app.pedidos)
-        lines.append(f"\n── Análisis de Complejidad ──")
-        lines.append(f"  n={n}, W={int(cap*10)}")
-        lines.append(f"  DP:          O(n×W) = {n}×{int(cap*10)} = {n*int(cap*10)} operaciones")
-        lines.append(f"  Fuerza Bruta: O(2^n) = 2^{n} = {2**n:,} operaciones")
-        lines.append(f"  Ahorro DP:   {(2**n - n*int(cap*10)):,} operaciones evitadas")
+        lines = [
+            f"── Knapsack 0/1 – Programación Dinámica ──",
+            f"Capacidad: {cap} kg  |  {n} pedidos  |  Tiempo: {elapsed:.3f} ms", ""
+        ]
+        lines.extend(pd.log_pasos)
+        lines.append(f"\n── Complejidad ──")
+        lines.append(f"  DP:          O(n×W) = {n}×{int(cap*10)} = {n*int(cap*10)} ops")
+        lines.append(f"  Fuerza Bruta: O(2^n) = {2**n:,} ops")
+        lines.append(f"  Ahorro:       {(2**n - n*int(cap*10)):,} ops evitadas")
         self._actualizar_text(self.txt_pd, lines)
         self.app.actualizar_mapa(pedidos_resaltados=seleccionados)
-        self.app.set_info_mapa(f"DP Knapsack: {len(seleccionados)} pedido(s) seleccionados para máx. valor")
-
-    def _seccion(self, parent, titulo):
-        c = self.app.COLORES
-        f = tk.Frame(parent, bg=c["card"], height=26)
-        f.pack(fill=tk.X, padx=6, pady=(8,2))
-        f.pack_propagate(False)
-        tk.Label(f, text=titulo, bg=c["card"], fg=c["accent2"], font=("Courier New",9,"bold")).pack(side=tk.LEFT, padx=8)
-
-    def _boton(self, parent, texto, comando):
-        c = self.app.COLORES
-        return tk.Button(parent, text=texto, command=comando,
-                         bg=c["accent"], fg="white", font=("Courier New",9,"bold"),
-                         relief=tk.FLAT, padx=12, pady=4,
-                         activebackground=c["card"], activeforeground=c["accent"], cursor="hand2")
-
-    def _text_area(self, parent):
-        c = self.app.COLORES
-        frame = tk.Frame(parent, bg=c["bg"])
-        frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
-        sb = ttk.Scrollbar(frame)
-        sb.pack(side=tk.RIGHT, fill=tk.Y)
-        txt = tk.Text(frame, bg=c["panel"], fg=c["text"], font=("Courier New",9),
-                      relief=tk.FLAT, padx=10, pady=8, yscrollcommand=sb.set,
-                      insertbackground=c["accent"], selectbackground=c["card"])
-        txt.pack(fill=tk.BOTH, expand=True)
-        sb.config(command=txt.yview)
-        txt.tag_config("titulo", foreground=c["accent"], font=("Courier New",10,"bold"))
-        txt.tag_config("ok", foreground=c["success"])
-        txt.tag_config("warn", foreground=c["warning"])
-        txt.tag_config("info", foreground=c["info"])
-        return txt
-
-    def _actualizar_text(self, txt, lines):
-        txt.config(state=tk.NORMAL)
-        txt.delete("1.0", tk.END)
-        for ln in lines:
-            if ln.startswith("──") or ln.startswith("🏆") or ln.startswith("Total"):
-                txt.insert(tk.END, ln+"\n", "titulo")
-            elif ln.startswith("✓") or ln.startswith("✔"):
-                txt.insert(tk.END, ln+"\n", "ok")
-            elif ln.startswith("✗") or ln.startswith("✘") or ln.startswith("⚠") or ln.startswith("❌"):
-                txt.insert(tk.END, ln+"\n", "warn")
-            else:
-                txt.insert(tk.END, ln+"\n")
-        txt.config(state=tk.DISABLED)
-        txt.see(tk.END)
+        self.app.set_info_mapa(f"Knapsack: {len(seleccionados)} pedidos · S/{valor:.2f} · {peso:.1f} kg")
