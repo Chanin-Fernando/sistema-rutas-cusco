@@ -54,6 +54,78 @@ class BaseTab:
                         activeforeground=c["accent"])
         return btn
 
+    # ── Botón "Usar selección del mapa" ──────────────────────────────────
+    def _btn_usar_mapa(self, parent, var_origen, var_destino):
+        """
+        Agrega un botón que copia el origen/destino seleccionado en el mapa
+        a los StringVar del tab.
+
+        Uso:
+            self._btn_usar_mapa(self.tab, self.var_origen, self.var_destino)
+
+        El botón queda deshabilitado si no hay nodos seleccionados en el mapa.
+        """
+        c = self.app.COLORES
+
+        fila = tk.Frame(parent, bg=c["panel_bg"])
+        fila.pack(fill=tk.X, padx=12, pady=(0, 4))
+
+        self._btn_mapa_ref = tk.Button(
+            fila,
+            text="📍 Usar selección del mapa",
+            command=lambda: self._aplicar_seleccion_mapa(var_origen, var_destino),
+            bg=c["chip_bg"], fg=c["text2"],
+            font=("Segoe UI", 8), relief=tk.FLAT,
+            padx=10, pady=4, cursor="hand2", bd=0,
+            activebackground=c["tag_blue"],
+            activeforeground=c["accent"])
+        self._btn_mapa_ref.pack(side=tk.LEFT)
+
+        self._lbl_mapa_estado = tk.Label(
+            fila, text="Sin selección en el mapa",
+            bg=c["panel_bg"], fg=c["text3"],
+            font=("Segoe UI", 8))
+        self._lbl_mapa_estado.pack(side=tk.LEFT, padx=8)
+
+        # Actualiza el estado cada 500 ms
+        self._poll_seleccion_mapa(var_origen, var_destino)
+
+    def _poll_seleccion_mapa(self, var_origen, var_destino):
+        """Consulta cada 500 ms si hay nodos seleccionados y actualiza el label."""
+        c = self.app.COLORES
+        orig  = self.app.get_nodo_origen()
+        dest  = self.app.get_nodo_destino()
+
+        if orig and dest:
+            self._lbl_mapa_estado.config(
+                text=f"A: {orig[:12]}  →  B: {dest[:12]}",
+                fg=c["accent2"])
+            self._btn_mapa_ref.config(bg=c["tag_blue"], fg=c["accent"])
+        elif orig:
+            self._lbl_mapa_estado.config(
+                text=f"Origen: {orig[:16]}  (falta destino)",
+                fg=c["warning"])
+            self._btn_mapa_ref.config(bg=c["chip_bg"], fg=c["text2"])
+        else:
+            self._lbl_mapa_estado.config(
+                text="Sin selección en el mapa", fg=c["text3"])
+            self._btn_mapa_ref.config(bg=c["chip_bg"], fg=c["text2"])
+
+        # Reprogramar solo si el frame todavía existe
+        try:
+            self.tab.after(500, lambda: self._poll_seleccion_mapa(var_origen, var_destino))
+        except Exception:
+            pass
+
+    def _aplicar_seleccion_mapa(self, var_origen, var_destino):
+        """Copia los nodos seleccionados en el mapa a los combos del tab."""
+        orig = self.app.get_nodo_origen()
+        dest = self.app.get_nodo_destino()
+        if orig:
+            var_origen.set(orig)
+        if dest:
+            var_destino.set(dest)
+
     # ── Área de texto con scroll (log) ────────────────────────────────────
     def _text_area(self, parent, height=None):
         c = self.app.COLORES
@@ -75,14 +147,14 @@ class BaseTab:
         txt.pack(fill=tk.BOTH, expand=True)
         sb.config(command=txt.yview)
         # Tags
-        txt.tag_config("titulo", foreground=c["accent"],
+        txt.tag_config("titulo",    foreground=c["accent"],
                        font=("Segoe UI", 10, "bold"))
         txt.tag_config("subtitulo", foreground=c["text2"],
                        font=("Segoe UI", 9, "bold"))
-        txt.tag_config("ok", foreground=c["success"])
-        txt.tag_config("warn", foreground=c["danger"])
-        txt.tag_config("info", foreground=c["info"])
-        txt.tag_config("dim", foreground=c["text3"])
+        txt.tag_config("ok",     foreground=c["success"])
+        txt.tag_config("warn",   foreground=c["danger"])
+        txt.tag_config("info",   foreground=c["info"])
+        txt.tag_config("dim",    foreground=c["text3"])
         txt.tag_config("yellow", foreground=c["warning"])
         return txt
 

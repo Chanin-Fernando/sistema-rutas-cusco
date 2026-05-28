@@ -17,6 +17,7 @@ class BacktrackingTab(BaseTab):
                       "Todas las rutas posibles · O(V!)")
         nodos_lista = list(NODOS.keys())
 
+        # ── Origen ───────────────────────────────────────────────────────
         ctrl = self._ctrl_row(self.tab)
         self._label(ctrl, "Origen:").pack(side=tk.LEFT)
         self.var_origen = tk.StringVar(value="San Blas")
@@ -24,6 +25,7 @@ class BacktrackingTab(BaseTab):
                      width=14, state="readonly",
                      font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=4)
 
+        # ── Destino ───────────────────────────────────────────────────────
         ctrl2 = self._ctrl_row(self.tab)
         self._label(ctrl2, "Destino:").pack(side=tk.LEFT)
         self.var_destino = tk.StringVar(value="Wanchaq (Túpac Amaru)")
@@ -31,6 +33,12 @@ class BacktrackingTab(BaseTab):
                      width=14, state="readonly",
                      font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=4)
 
+        # ── Botón "Usar selección del mapa" ──────────────────────────────
+        # Aparece justo debajo de los combos. Al hacer clic copia los nodos
+        # seleccionados con clic en el canvas a var_origen / var_destino.
+        self._btn_usar_mapa(self.tab, self.var_origen, self.var_destino)
+
+        # ── Calles bloqueadas ─────────────────────────────────────────────
         ctrl3 = self._ctrl_row(self.tab)
         self._label(ctrl3, "Calles bloqueadas:").pack(side=tk.LEFT)
         self.var_bloqueadas = tk.StringVar(value="")
@@ -42,13 +50,14 @@ class BacktrackingTab(BaseTab):
         self._label(self.tab, "  (ej: San Blas-San Cristóbal, separadas por coma)",
                     small=True).pack(anchor=tk.W, padx=12, pady=(0, 6))
 
+        # ── Ejecutar ──────────────────────────────────────────────────────
         ctrl4 = self._ctrl_row(self.tab)
         self._boton(ctrl4, "▶ Buscar rutas", self._ejecutar_backtracking).pack(side=tk.LEFT)
 
         self.txt_bt = self._text_area(self.tab)
 
     def _ejecutar_backtracking(self):
-        origen = self.var_origen.get()
+        origen  = self.var_origen.get()
         destino = self.var_destino.get()
         bloq_raw = self.var_bloqueadas.get()
         bloqueadas = [b.strip() for b in bloq_raw.split(",") if b.strip()]
@@ -67,4 +76,5 @@ class BacktrackingTab(BaseTab):
         if mejor_ruta:
             self.app.actualizar_mapa(ruta_resaltada=mejor_ruta,
                                      pedidos_resaltados=self.app.pedidos[:3])
-            self.app.set_info_mapa(f"Backtracking: mejor ruta {costo} min · {len(mejor_ruta)} zonas")
+            self.app.set_info_mapa(
+                f"Backtracking: mejor ruta {costo} min · {len(mejor_ruta)} zonas")
