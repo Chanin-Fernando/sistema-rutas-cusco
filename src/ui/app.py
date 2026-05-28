@@ -28,6 +28,8 @@ from .tabs import (
     PDTab,
     BacktrackingTab
 )
+from .themes import get_theme, THEME_LIGHT, THEME_DARK
+from .theme_utils import retheme_tree, apply_text_tags
 
 # ─── Paleta Google Maps Light ─────────────────────────────────────────────────
 C = {
@@ -92,6 +94,10 @@ class AppCusco(tk.Tk):
 
         self.pedidos      = generar_pedidos(12)
         self.repartidores = generar_repartidores()
+
+        # ── Tema activo ──────────────────────────────────────────────────────
+        self._tema_actual  = "light"   # "light" | "dark"
+        self._palette_prev = dict(C)   # copia para retheme diff
 
         self._tab_index   = 0
         self._tab_frames  = []
@@ -163,9 +169,22 @@ class AppCusco(tk.Tk):
         bar = tk.Frame(self, bg=C["topbar_bg"], height=56)
         bar.pack(fill=tk.X)
         bar.pack_propagate(False)
+        self._topbar = bar  # guardar referencia para retheme
 
+        # ── Menú hamburguesa (⋮) ─────────────────────────────────────────────
+        self._menu_btn = tk.Button(
+            bar, text="⋮",
+            bg=C["topbar_bg"], fg=C["text2"],
+            font=("Segoe UI", 18), relief=tk.FLAT,
+            padx=10, pady=0, cursor="hand2", bd=0,
+            activebackground=C["chip_bg"],
+            activeforeground=C["text"],
+            command=self._mostrar_menu)
+        self._menu_btn.pack(side=tk.LEFT, padx=(8, 0), pady=6)
+
+        # ── Logo / título ─────────────────────────────────────────────────────
         logo_frame = tk.Frame(bar, bg=C["topbar_bg"])
-        logo_frame.pack(side=tk.LEFT, padx=20, pady=8)
+        logo_frame.pack(side=tk.LEFT, padx=(4, 20), pady=8)
         tk.Label(logo_frame, text="🗺", bg=C["topbar_bg"],
                  font=("Segoe UI", 20)).pack(side=tk.LEFT)
         title_frame = tk.Frame(logo_frame, bg=C["topbar_bg"])
@@ -180,6 +199,7 @@ class AppCusco(tk.Tk):
         tk.Frame(bar, bg=C["panel_border"], width=1).pack(
             side=tk.LEFT, fill=tk.Y, pady=12, padx=8)
 
+        # ── Chips de algoritmos ───────────────────────────────────────────────
         chips_frame = tk.Frame(bar, bg=C["topbar_bg"])
         chips_frame.pack(side=tk.LEFT, pady=14)
         for i, (label, _) in enumerate(ALGO_TABS):
@@ -195,11 +215,10 @@ class AppCusco(tk.Tk):
             btn.pack(side=tk.LEFT, padx=2)
             self._tab_buttons.append(btn)
 
-        # Botones de herramientas del mapa (derecha de la topbar)
+        # ── Herramientas del mapa (derecha) ───────────────────────────────────
         tools_frame = tk.Frame(bar, bg=C["topbar_bg"])
         tools_frame.pack(side=tk.RIGHT, padx=10)
 
-        # Botón cargar imagen de fondo
         self.btn_mapa_img = tk.Button(
             tools_frame, text="🖼 Mapa",
             command=self._cargar_imagen_fondo,
@@ -208,7 +227,6 @@ class AppCusco(tk.Tk):
             padx=8, pady=3, cursor="hand2", bd=0)
         self.btn_mapa_img.pack(side=tk.LEFT, padx=2)
 
-        # Botón quitar imagen
         tk.Button(tools_frame, text="✕ Fondo",
                   command=self._quitar_imagen_fondo,
                   bg=C["chip_bg"], fg=C["text2"],
@@ -216,7 +234,6 @@ class AppCusco(tk.Tk):
                   padx=8, pady=3, cursor="hand2", bd=0
                   ).pack(side=tk.LEFT, padx=2)
 
-        # Slider de opacidad
         tk.Label(tools_frame, text="Opacidad:", bg=C["topbar_bg"],
                  fg=C["text3"], font=("Segoe UI", 8)).pack(side=tk.LEFT, padx=(8, 2))
         self.slider_opacidad = tk.Scale(
@@ -227,7 +244,6 @@ class AppCusco(tk.Tk):
         self.slider_opacidad.set(int(self._bg_opacidad * 100))
         self.slider_opacidad.pack(side=tk.LEFT)
 
-        # Zoom reset
         tk.Button(tools_frame, text="⊙ Reset",
                   command=self._reset_zoom,
                   bg=C["chip_bg"], fg=C["text2"],
@@ -238,6 +254,171 @@ class AppCusco(tk.Tk):
         self.lbl_topbar_info = tk.Label(bar, text="",
             bg=C["topbar_bg"], fg=C["text2"], font=("Segoe UI", 9))
         self.lbl_topbar_info.pack(side=tk.RIGHT, padx=10)
+
+    # ─── Menú desplegable ─────────────────────────────────────────────────────
+    def _mostrar_menu(self):
+        """Crea y muestra el menú flotante debajo del botón ⋮."""
+        C_now = self.COLORES
+
+        # Destruir menú anterior si existe
+        if hasattr(self, "_menu_popup") and self._menu_popup.winfo_exists():
+            self._menu_popup.destroy()
+            return
+
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)      # sin decoración de ventana
+        popup.attributes("-topmost", True)
+        popup.configure(bg=C_now["panel_border"])
+        self._menu_popup = popup
+
+        # Posicionar justo debajo del botón ⋮
+        bx = self._menu_btn.winfo_rootx()
+        by = self._menu_btn.winfo_rooty() + self._menu_btn.winfo_height()
+        popup.geometry(f"220x130+{bx}+{by}")
+
+        inner = tk.Frame(popup, bg=C_now["panel_bg"],
+                         relief=tk.FLAT, bd=0)
+        inner.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+
+        # ── Etiqueta del tema actual ──
+        tema_label = "🌙  Cambiar a Modo Oscuro" if self._tema_actual == "light" \
+                     else "☀  Cambiar a Modo Claro"
+
+        def _item(parent, icon_text, command):
+            f = tk.Frame(parent, bg=C_now["panel_bg"], cursor="hand2")
+            f.pack(fill=tk.X)
+            lbl = tk.Label(f, text=icon_text,
+                           bg=C_now["panel_bg"], fg=C_now["text"],
+                           font=("Segoe UI", 10), anchor=tk.W,
+                           padx=16, pady=9)
+            lbl.pack(fill=tk.X)
+            def on_enter(e):
+                f.config(bg=C_now["chip_bg"])
+                lbl.config(bg=C_now["chip_bg"])
+            def on_leave(e):
+                f.config(bg=C_now["panel_bg"])
+                lbl.config(bg=C_now["panel_bg"])
+            def on_click(e):
+                popup.destroy()
+                command()
+            f.bind("<Enter>", on_enter)
+            f.bind("<Leave>", on_leave)
+            f.bind("<Button-1>", on_click)
+            lbl.bind("<Enter>", on_enter)
+            lbl.bind("<Leave>", on_leave)
+            lbl.bind("<Button-1>", on_click)
+            return f
+
+        _item(inner, tema_label, self._toggle_tema)
+        tk.Frame(inner, bg=C_now["panel_border"], height=1).pack(fill=tk.X, padx=12)
+        _item(inner, "📖  Documentación (GitHub)", self._abrir_documentacion)
+        tk.Frame(inner, bg=C_now["panel_border"], height=1).pack(fill=tk.X, padx=12)
+        _item(inner, "ℹ  Acerca del proyecto", self._mostrar_acerca)
+
+        # Cerrar al clic fuera del menú
+        popup.bind("<FocusOut>", lambda e: popup.destroy() if popup.winfo_exists() else None)
+        popup.focus_set()
+
+    # ─── Acciones del menú ────────────────────────────────────────────────────
+    def _toggle_tema(self):
+        """Alterna entre tema claro y oscuro y re-aplica a todos los widgets."""
+        import tkinter.ttk as ttk
+
+        nuevo = "dark" if self._tema_actual == "light" else "light"
+        nueva_paleta = get_theme(nuevo)
+        vieja_paleta = get_theme(self._tema_actual)
+
+        # Actualizar la paleta global C
+        C.update(nueva_paleta)
+        self.COLORES = C
+
+        self._tema_actual = nuevo
+
+        # Re-aplicar colores a toda la jerarquía de widgets
+        retheme_tree(self, vieja_paleta, nueva_paleta)
+
+        # Actualizar estilos ttk (Treeview, Combobox, Scrollbar)
+        style = ttk.Style(self)
+        style.configure("Treeview",
+            background=C["panel_bg"], foreground=C["text"],
+            fieldbackground=C["panel_bg"])
+        style.configure("Treeview.Heading",
+            background=C["separator"], foreground=C["text2"])
+        style.map("Treeview",
+            background=[("selected", C["tag_blue"])],
+            foreground=[("selected", C["accent"])])
+        style.configure("TCombobox",
+            fieldbackground=C["chip_bg"], background=C["chip_bg"],
+            foreground=C["text"], selectbackground=C["tag_blue"])
+        style.map("TCombobox", fieldbackground=[("readonly", C["chip_bg"])])
+        style.configure("TScrollbar",
+            background=C["chip_bg"], troughcolor=C["separator"])
+
+        # Forzar color de fondo de la raíz y frames principales
+        self.configure(bg=C["panel_bg"])
+        if hasattr(self, "sidebar"):
+            self.sidebar.configure(bg=C["panel_bg"])
+        if hasattr(self, "mapa_frame"):
+            self.mapa_frame.configure(bg=C["map_bg"])
+            self.canvas_mapa.configure(bg=C["map_bg"])
+
+        # Redibujar mapa con los nuevos colores
+        self._dibujar_mapa()
+
+    def _abrir_documentacion(self):
+        """Abre la página de documentación en el navegador."""
+        import webbrowser
+        webbrowser.open("https://github.com/Chanin-Fernando/sistema-rutas-cusco#")
+
+    def _mostrar_acerca(self):
+        """Muestra un diálogo con información del proyecto."""
+        C_now = self.COLORES
+
+        win = tk.Toplevel(self)
+        win.title("Acerca del proyecto")
+        win.geometry("380x260")
+        win.resizable(False, False)
+        win.configure(bg=C_now["panel_bg"])
+        win.grab_set()
+
+        # Encabezado
+        header = tk.Frame(win, bg=C_now["accent"], height=6)
+        header.pack(fill=tk.X)
+
+        tk.Label(win, text="🗺  Rutas Óptimas · Cusco",
+                 bg=C_now["panel_bg"], fg=C_now["text"],
+                 font=("Segoe UI", 13, "bold")).pack(pady=(18, 2))
+        tk.Label(win, text="Sistema de Gestión de Rutas Óptimas",
+                 bg=C_now["panel_bg"], fg=C_now["text2"],
+                 font=("Segoe UI", 9)).pack()
+
+        tk.Frame(win, bg=C_now["separator"], height=1).pack(fill=tk.X, padx=24, pady=12)
+
+        info = [
+            ("Universidad", "UNSAAC – Programación III"),
+            ("Algoritmos",  "Greedy · D&V · PD · Backtracking · QuickSort"),
+            ("Entrega",     "Jueves 28 de mayo del 2026"),
+            ("Docentes",    "M.Sc. Ugarte R. & M.Sc. Chullo Llave"),
+        ]
+        for lbl, val in info:
+            row = tk.Frame(win, bg=C_now["panel_bg"])
+            row.pack(fill=tk.X, padx=28, pady=2)
+            tk.Label(row, text=f"{lbl}:", bg=C_now["panel_bg"],
+                     fg=C_now["text3"], font=("Segoe UI", 8),
+                     width=12, anchor=tk.W).pack(side=tk.LEFT)
+            tk.Label(row, text=val, bg=C_now["panel_bg"],
+                     fg=C_now["text"], font=("Segoe UI", 8),
+                     anchor=tk.W).pack(side=tk.LEFT)
+
+        tk.Frame(win, bg=C_now["separator"], height=1).pack(fill=tk.X, padx=24, pady=12)
+
+        tk.Button(win, text="Cerrar", command=win.destroy,
+                  bg=C_now["accent"], fg="white",
+                  font=("Segoe UI", 9, "bold"),
+                  relief=tk.FLAT, padx=20, pady=6,
+                  cursor="hand2", bd=0,
+                  activebackground=C_now["accent_dark"],
+                  activeforeground="white").pack(pady=(0, 16))
 
     # ─── Sidebar ──────────────────────────────────────────────────────────────
     def _build_sidebar(self):
