@@ -29,7 +29,10 @@ def generar_pedidos(n: int = 10) -> list:
             coord_y=round(max(0, min(100, cy)), 1),
             prioridad=random.choice([1, 1, 2, 2, 2, 3]),
             peso=round(random.uniform(0.5, 10.0), 1),
-            valor=round(random.uniform(20, 200), 2),
+            # Valor basado en prioridad: urgente = más rentable para el negocio
+            valor=round(random.uniform(120, 200) if random.choice([1,1,2,2,2,3]) == 1
+                        else random.uniform(60, 120) if random.choice([1,2,2,3]) != 3
+                        else random.uniform(20, 60), 2),
         ))
     return pedidos
 

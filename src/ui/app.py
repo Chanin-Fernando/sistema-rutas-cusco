@@ -629,12 +629,12 @@ class AppCusco(tk.Tk):
 
                 mx_l, my_l = (ax+bx)/2, (ay+by)/2
                 if not en_ruta:
-                    cv.create_text(mx_l, my_l, text=str(peso)+"m",
+                    cv.create_text(mx_l, my_l, text=f"{peso}min",
                                    fill=C["text3"], font=("Segoe UI", 7))
                 else:
                     cv.create_oval(mx_l-9, my_l-9, mx_l+9, my_l+9,
                                    fill="white", outline=C["route_blue"], width=1)
-                    cv.create_text(mx_l, my_l, text=str(peso),
+                    cv.create_text(mx_l, my_l, text=f"{peso}min",
                                    fill=C["route_blue"], font=("Segoe UI", 7, "bold"))
 
         # ── Pedidos ───────────────────────────────────────────────────────────
